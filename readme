@@ -19,3 +19,30 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+
+
+This app consists of 2 FlashBuilder projects:
+
+LeanAIRProfiler - An AIR project that provides the UI to control profiling behavior and display profiling results. This project requires AIR 4.1 or higher.
+
+Preloader - An ActionScript project that provides a swf that collects the profiling data.
+
+QuickStart:
+1. Add both projects to Flash Builder 
+   - This will ensure that they are added to the global FlashPlayerTrust directory which is necessary for the preloader to work correctly.
+2. Update LeanAirProfiler.mxml so the value of PRELOADER_PATH points to the bin-debug directory of your Preloader project.
+   - This is the simplest way to get the preloader added to mm.cfg.
+3. Make a back-up copy of mm.cfg in your user profile directory if it already exists.
+   - This should ensure that you don't lose anything if the LeanAirProfiler misbehaves.
+4. Build both projects
+   - This should ensure that you have a valid and working Preloader.swf and LeanAirProfiler app
+5. Debug or run the LeanAirProfiler app
+   - Debugging is probably a better idea in case anything breaks
+6. Click on the Listen button in the LeanAirProfiler app and optionall check the checkbox to tell it to start profiling as soon as an app connects.
+   - This makes sure that when you launch the app you want to profile, the preloader can make a socket connection to the LeanAirProfiler.
+7. Debug or run the app you want to profile.
+   - You should see a message in the LeanAirProfiler telling you that the app connected.
+8. If you didn't check the auto-start checkbox, click the start button in the LeanAirprofiler app.
+   - This tells the preloader to start collecting profiling data.
+9. Click the trace button in the LeanAirProfiler app to see all the methods that have been called in your app since you started profiling.
+10. Click the read button in the LeanAirProfiler app to see info about the objects that have been created, but not deleted since you started profiling.
