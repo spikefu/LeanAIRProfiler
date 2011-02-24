@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 
-This app consists of 2 FlashBuilder projects:
+The LeanAirProfiler consists of 2 FlashBuilder projects:
 
 LeanAIRProfiler - An AIR project that provides the UI to control profiling behavior and display profiling results. This project requires AIR 4.1 or higher.
 
