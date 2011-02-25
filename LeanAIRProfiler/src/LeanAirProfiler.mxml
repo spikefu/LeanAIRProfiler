@@ -4,7 +4,7 @@
 		<![CDATA[
 			import flash.sampler.Sample;
 			
-			public static const PRELOADER_PATH:String = "C:/dev/yellowbadger/Profiler/Preloader/bin-debug/Preloader.swf";
+			public static const PRELOADER_PATH:String = "C:/dev/yellowbadger/LeanAirProfiler/Preloader/bin-debug/Preloader.swf";
 			
 			public static const BEGIN_CHUNK:String = "BEGIN_CHUNKED_DATA";
 			public static const END_CHUNK:String = "END_CHUNKED_DATA";
@@ -121,7 +121,7 @@
 				
 			}
 			
-			private function listen():void {
+			private function listen(event:TimerEvent = null):void {
 				serverSocket.listen();
 				listening = true;
 			}

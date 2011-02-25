@@ -24,8 +24,6 @@ import flash.utils.Dictionary;
 import flash.utils.Timer;
 import flash.utils.getQualifiedClassName;
 
-import org.osmf.events.TimeEvent;
-
 	public class Preloader extends Sprite
 	{
 		private var socket:Socket;
@@ -70,31 +68,48 @@ import org.osmf.events.TimeEvent;
 		private function ioError(event:IOErrorEvent):void {
 			// Just swallow the error
 			// This happens when the LeanAirProfiler launches if the Preloader.swf is in mm.cfg
+			// It also happens if LeanAirProfiler isn't running or listening and Preloader.swf is in mm.cfg
 		}
 		
+		/**
+		 * OK, let's rock this joint and collect some numbers
+		 */
 		private function start():void {
 			startSampling();
 			isSampling = true;
 		}
 		
+		/**
+		 * Whoah there! let's take a break.
+		 */
 		private function pause():void {
 			pauseSampling();
 			isSampling = false;
 		}
 		
+		/**
+		 * Reset the objects collection and clear anything the sampler API has
+		 * stored internally.
+		 */
 		private function clear():void {
 			pauseSampling();
 			
 			objects = new Dictionary(true);
+			savedSamples = [];
 			clearSamples();
 			if (isSampling) {
 				start();
 			}
 		}
 		
+		/**
+		 * Let's find us some lingering objects.
+		 * Add any NewObjectSample without a corresponding
+		 * DeleteObjectSample to the objects collection, then
+		 * clear the internal samples.
+		 */
 		private function collectSamples():void {
 			pauseSampling();
-			
 			var samples:* = getSamples();
 			var name:String;
 			for each (var s:Sample in samples ) {
@@ -108,9 +123,7 @@ import org.osmf.events.TimeEvent;
 						delete objects[dos.id];
 					}
 				} else {
-					if (Math.random() < 0.005 && s.stack) {
-						//readSample(s);
-					}
+					savedSamples.push(s);
 				}
 			}
 			
@@ -119,27 +132,34 @@ import org.osmf.events.TimeEvent;
 				start();
 			}
 		}
-
+		
+		/**
+		 * 
+		 */
 		private function traceMethods():void {
+			collectSamples();
 			pauseSampling();
-			
 			var i:int;
-			
-			var samples:* = getSamples();
+			var j:int;
 			
 			socket.writeUTFBytes("BEGIN_CHUNKED_DATA");
 			socket.flush();
-			for each (var s:Sample in samples ) {
-				if (s is NewObjectSample || s is DeleteObjectSample) {
-					continue;
+			var startTime:Number = -1;
+			for (i=0;i<savedSamples.length;i++) {
+				var s:Sample = savedSamples[i] as Sample;
+				if (startTime == -1) {
+					startTime = s.time;
 				}
 				if (s.stack.length < 2) {
 					continue;
 				}
-				var d:Date = new Date(s.time/1000);
-				socket.writeUTFBytes("\ntime:" + d.minutes + ":" + d.seconds + "." + d.milliseconds + "\n");
-				for (i=0;i<s.stack.length;i++) {
-					var stackElement:StackFrame = s.stack[i];
+				var delta:Number = Math.floor((s.time - startTime)/1000); 
+				socket.writeUTFBytes("\ntime:" + delta + "ms\n");
+				for (j=0;j<s.stack.length;j++) {
+					var stackElement:StackFrame = s.stack[j];
+					if (stackElement == null) {
+						continue;
+					}
 					if (i>0) {
 						socket.writeUTFBytes("  ");
 					}
@@ -193,7 +213,7 @@ import org.osmf.events.TimeEvent;
 		private function onConnect(event:Event):void {
 			pauseSampling();
 
-			socket.writeUTFBytes("LeanProfiler connected!");
+			socket.writeUTFBytes("Preload profiler connected!");
 
 			if (isSampling) {
 				start();
