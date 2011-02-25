@@ -23,7 +23,7 @@ THE SOFTWARE.
 
 The LeanAirProfiler consists of 2 FlashBuilder projects:
 
-LeanAIRProfiler - An AIR project that provides the UI to control profiling behavior and display profiling results. This project requires AIR 4.1 or higher.
+LeanAIRProfiler - An AIR project that provides the UI to control profiling behavior and display profiling results. This project requires Flex 4.1 or higher.
 
 Preloader - An ActionScript project that provides a swf that collects the profiling data.
 
