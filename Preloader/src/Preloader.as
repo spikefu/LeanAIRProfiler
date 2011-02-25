@@ -19,6 +19,7 @@ import flash.sampler.pauseSampling;
 import flash.sampler.setSamplerCallback;
 import flash.sampler.startSampling;
 import flash.sampler.stopSampling;
+import flash.system.Security;
 import flash.utils.ByteArray;
 import flash.utils.Dictionary;
 import flash.utils.Timer;
@@ -26,6 +27,10 @@ import flash.utils.getQualifiedClassName;
 
 	public class Preloader extends Sprite
 	{
+		private var host:String = "localhost";
+		
+		private var port:uint = 9998;
+		
 		private var socket:Socket;
 		
 		private var savedSamples:Array = [];
@@ -37,11 +42,12 @@ import flash.utils.getQualifiedClassName;
 		public function Preloader()
 		{
 			super();
+			//Security.loadPolicyFile("xmlsocket://"+host+":"+port);
 			socket = new Socket();
 			socket.addEventListener(Event.CONNECT,onConnect);
 			socket.addEventListener(ProgressEvent.SOCKET_DATA,onSocketData);
 			socket.addEventListener(IOErrorEvent.IO_ERROR,ioError);
-			socket.connect("localhost",9998);
+			socket.connect(host,port);
 			setSamplerCallback(collectSamples);
 		}
 		

@@ -8,8 +8,9 @@
 			
 			public static const BEGIN_CHUNK:String = "BEGIN_CHUNKED_DATA";
 			public static const END_CHUNK:String = "END_CHUNKED_DATA";
+			public static const POLICY_FILE_REQUEST:String = "<policy-file-request />";
 			
-			private var securitySocket:ServerSocket = new ServerSocket();
+			public var serverPort:uint = 9998;
 			
 			private var serverSocket:ServerSocket = new ServerSocket();
 			
@@ -20,11 +21,8 @@
 			private var buffering:Boolean = false;
 			
 			private function appComplete():void {
-				securitySocket.bind(843);
 				serverSocket.bind(9998);
 				serverSocket.addEventListener(ServerSocketConnectEvent.CONNECT,onConnect);
-				securitySocket.addEventListener(ServerSocketConnectEvent.CONNECT,onPolicyFileRequest);
-				securitySocket.listen();
 				writePreloaderConfig();
 			}
 			
@@ -83,10 +81,9 @@
 			}
 			
 			
-			private function onPolicyFileRequest(event:ServerSocketConnectEvent):void {
-				event.socket.writeUTF('<cross-domain-policy><allow-access-from domain="*" to-ports="*" /></cross-domain-policy>');
-				event.socket.flush();
-				log("Got connection on port 843");
+			private function sendCrossDomainPolicy():void {
+				clientSocket.writeUTF('<cross-domain-policy><allow-access-from domain="*" to-ports="*" /></cross-domain-policy>');
+				clientSocket.flush();
 			}
 			
 			private function onConnect(event:ServerSocketConnectEvent):void {
@@ -102,6 +99,10 @@
 			private function onClientSocketData( event:ProgressEvent ):void
 			{
 				var s:String = clientSocket.readUTFBytes(clientSocket.bytesAvailable);
+				if (s.indexOf(POLICY_FILE_REQUEST) == 0) {
+					sendCrossDomainPolicy();
+					return;
+				}
 				if (s.indexOf(BEGIN_CHUNK) == 0) {
 					buffer = s.substr(BEGIN_CHUNK.length);
 					buffering = true;
