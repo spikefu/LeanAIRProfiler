@@ -6,9 +6,23 @@
 			
 			public static const PRELOADER_PATH:String = "C:/dev/yellowbadger/LeanAirProfiler/Preloader/bin-debug/Preloader.swf";
 			
-			public static const BEGIN_CHUNK:String = "BEGIN_CHUNKED_DATA";
-			public static const END_CHUNK:String = "END_CHUNKED_DATA";
-			public static const POLICY_FILE_REQUEST:String = "<policy-file-request />";
+			public static const START_COMMAND:String = "START";
+			
+			public static const PAUSE_COMMAND:String = "PAUSE";
+			
+			public static const CLEAR_COMMAND:String = "CLEAR";
+			
+			public static const READ_OBJECTS_COMMAND:String = "READ_OBJECTS";
+			
+			public static const TRACE_METHODS_COMMAND:String = "TRACE_METHODS";
+			
+			public static const ANALYZE_PERFORMANCE_COMMAND:String = "ANALYZE_PERFORMANCE";
+			
+			public static const BEGIN_CHUNKED_DATA:String = "BEGIN_CHUNKED_DATA";
+			
+			public static const END_CHUNKED_DATA:String = "END_CHUNKED_DATA";
+			
+			public static const POLICY_FILE_REQUEST:String = "<policy-file-request/>";
 			
 			public var serverPort:uint = 9998;
 			
@@ -24,6 +38,7 @@
 				serverSocket.bind(9998);
 				serverSocket.addEventListener(ServerSocketConnectEvent.CONNECT,onConnect);
 				writePreloaderConfig();
+				maximize();
 			}
 			
 			private function writePreloaderConfig():void {
@@ -52,6 +67,10 @@
 				fs.close();
 			}
 			
+			/**
+			 * Not currently used
+			 * TODO: Implement this so we can erase the preloader from mm.cfg.
+			 */
 			private function erasePreloaderConfig():void {
 				var f:File = File.userDirectory;
 				var cfgFile:File = f.resolvePath("mm.cfg"); 
@@ -103,11 +122,11 @@
 					sendCrossDomainPolicy();
 					return;
 				}
-				if (s.indexOf(BEGIN_CHUNK) == 0) {
-					buffer = s.substr(BEGIN_CHUNK.length);
+				if (s.indexOf(BEGIN_CHUNKED_DATA) == 0) {
+					buffer = s.substr(BEGIN_CHUNKED_DATA.length);
 					buffering = true;
-				} else if (s.indexOf(END_CHUNK) >= 0) {
-					buffer += s.substr(0,s.length-END_CHUNK.length);
+				} else if (s.indexOf(END_CHUNKED_DATA) >= 0) {
+					buffer += s.substr(0,s.length-END_CHUNKED_DATA.length);
 					log(buffer);
 					buffer = "";
 					buffering = false;
@@ -134,7 +153,7 @@
 			
 			private function startProfiling():void {
 				if (clientSocket  && clientSocket.connected) {
-					clientSocket.writeUTFBytes("START");
+					clientSocket.writeUTFBytes(START_COMMAND);
 					clientSocket.flush();
 					profiling = true;
 				}
@@ -142,7 +161,7 @@
 			
 			private function pauseProfiling():void {
 				if (clientSocket  && clientSocket.connected) {
-					clientSocket.writeUTFBytes("PAUSE");
+					clientSocket.writeUTFBytes(PAUSE_COMMAND);
 					clientSocket.flush();
 				}
 				profiling = false;
@@ -150,7 +169,7 @@
 			
 			private function clearProfilingData():void {
 				if (clientSocket  && clientSocket.connected) {
-					clientSocket.writeUTFBytes("CLEAR");
+					clientSocket.writeUTFBytes(CLEAR_COMMAND);
 					clientSocket.flush();
 					profiling = false;
 					logField.text = "";
@@ -160,14 +179,21 @@
 			
 			private function findObjects():void {
 				if (clientSocket  && clientSocket.connected) {
-					clientSocket.writeUTFBytes("READ_OBJECTS");
+					clientSocket.writeUTFBytes(READ_OBJECTS_COMMAND);
 					clientSocket.flush();
 				}
 			}
 			
 			private function traceMethods():void {
 				if (clientSocket  && clientSocket.connected) {
-					clientSocket.writeUTFBytes("TRACE_METHODS");
+					clientSocket.writeUTFBytes(TRACE_METHODS_COMMAND);
+					clientSocket.flush();
+				}
+			}
+			
+			private function analyzePerformance():void {
+				if (clientSocket  && clientSocket.connected) {
+					clientSocket.writeUTFBytes(ANALYZE_PERFORMANCE_COMMAND);
 					clientSocket.flush();
 				}
 			}
@@ -195,6 +221,7 @@
 		<mx:Button label="Clear" toolTip="Clear profiling data for the current app." click="clearProfilingData()" enabled="{connected}" />
 		<mx:Button label="Read" toolTip="Read the current count of in memory objects from the profiler." click="findObjects()" enabled="{connected}" />
 		<mx:Button label="Trace" toolTip="Trace method calls since profiling started." click="traceMethods()" enabled="{connected}" />
+		<mx:Button label="Analyze" toolTip="Analyze method performance." click="analyzePerformance()" enabled="{connected}" />
 		<mx:CheckBox label="Autostart" id="autoStart" toolTip="Start profiling as soon as a client connects" />
 	</mx:HBox>
 	<mx:TextArea width="100%" top="{toolBar.height}" bottom="0" id="logField" wordWrap="false" />
