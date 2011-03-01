@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<mx:WindowedApplication applicationComplete="appComplete()"  xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute">
+<mx:WindowedApplication applicationComplete="appComplete()"  xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute" width="800" height="500">
 	<mx:Script>
 		<![CDATA[
 			import flash.sampler.Sample;
+			
+			import mx.collections.ArrayCollection;
 			
 			public static const PRELOADER_PATH:String = "C:/dev/yellowbadger/LeanAirProfiler/Preloader/bin-debug/Preloader.swf";
 			
@@ -38,7 +40,10 @@
 				serverSocket.bind(9998);
 				serverSocket.addEventListener(ServerSocketConnectEvent.CONNECT,onConnect);
 				writePreloaderConfig();
-				maximize();
+				includeExcludeDP = new ArrayCollection();
+				includeExcludeDP.addItem("Exclude");
+				includeExcludeDP.addItem("Include");
+					
 			}
 			
 			private function writePreloaderConfig():void {
@@ -127,6 +132,7 @@
 					buffering = true;
 				} else if (s.indexOf(END_CHUNKED_DATA) >= 0) {
 					buffer += s.substr(0,s.length-END_CHUNKED_DATA.length);
+					rawString = buffer;
 					log(buffer);
 					buffer = "";
 					buffering = false;
@@ -211,6 +217,81 @@
 			
 			[Bindable]
 			private var connected:Boolean = false;
+			
+			[Bindable]
+			private var includeExcludeDP:ArrayCollection;
+			
+			[Bindable]
+			private var filtersDP:ArrayCollection = new ArrayCollection();
+			
+			[Bindable]
+			private var rawString:String;
+			
+			private function doFilter():void {
+				var lines:Array = rawString.split("\n");
+				var i:int;
+				var j:int;
+				var numbers:String= "0123456789";
+				var minMethodTime:Number = new Number(minTime.text);
+				if (filtersDP.length == 0) {
+					filtersDP.addItem("");
+				}
+				for (i=0;i<filtersDP.length;i++) {
+					var filterText:String = filtersDP[i];
+					var tmp:Array = [];
+					for (j=0;j<lines.length;j++) {
+						var keep:Boolean = false;;
+						var line:String = lines[j];
+						if (filterText.length > 0) {
+							if (includeExclude.selectedItem == "Include") {
+								if (line.indexOf(filterText) >= 0) {
+									keep = true;
+								}
+							} else if (line.indexOf(filterText) < 0) {
+								keep = true;
+							}
+						} else {
+							keep = true;
+						}
+						if (minTime.text.length > 0) {
+							var idx:int = 0;
+							var numStr:String = "";
+							if (line.length > 0) {
+								while (numbers.indexOf(line.charAt(idx)) >= 0) {
+									numStr += line.charAt(idx);
+									idx++;
+								}
+								var n1:Number = new Number(numStr);
+								if (numStr.length > 0 && n1 < minMethodTime) {
+									keep = false;
+								}
+							} else {
+								keep = true;
+							}
+						}
+						if (keep) {
+							tmp.push(line);
+						}
+					}
+					lines = tmp;
+				}
+				logField.text = lines.join("\n");
+			}
+			
+			private function updateFilters():void {
+				filtersDP.addItem(filterCombo.text);
+				filterCombo.text = "";
+				doFilter();
+			}
+			
+			private function removeFilter():void {
+				if (filtersDP.contains(filterCombo.text)) {
+					filtersDP.removeItemAt(filtersDP.getItemIndex(filterCombo.text));
+				}
+				filterCombo.text = "";
+				doFilter();
+			}
+			
 		]]>
 	</mx:Script>
 	<mx:HBox id="toolBar">
@@ -224,5 +305,11 @@
 		<mx:Button label="Analyze" toolTip="Analyze method performance." click="analyzePerformance()" enabled="{connected}" />
 		<mx:CheckBox label="Autostart" id="autoStart" toolTip="Start profiling as soon as a client connects" />
 	</mx:HBox>
-	<mx:TextArea width="100%" top="{toolBar.height}" bottom="0" id="logField" wordWrap="false" />
+	<mx:HBox id="options" top="{toolBar.height+3}">
+		<mx:ComboBox id="includeExclude" dataProvider="{includeExcludeDP}" />
+		<mx:Label text="rows containing"/><mx:ComboBox editable="true" dataProvider="{filtersDP}" id="filterCombo" enter="updateFilters()" /><mx:Button label="x" width="25" click="removeFilter()" />
+		<mx:Label text="Min method time"/><mx:TextInput id="minTime" restrict="0-9"/>
+		<mx:Button label="apply" click="doFilter()" enabled="{rawString.length &gt; 0}" />
+	</mx:HBox>
+	<mx:TextArea left="0" right="0" top="{options.height+options.y}" bottom="0" id="logField" wordWrap="false" />
 </mx:WindowedApplication>

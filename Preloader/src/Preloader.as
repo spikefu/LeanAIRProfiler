@@ -292,8 +292,8 @@ import flash.utils.getQualifiedClassName;
 			for (i=0;i<perfData.length;i++) {
 				tm = perfData[i] as TimedMethod;
 				var time:Number = Math.floor((tm.start-startTime)/1000);
-				socket.writeUTFBytes(time.toString() + "ms\n");
-				socket.writeUTFBytes(readTimedMethod(tm,"  "));
+				socket.writeUTFBytes("\nNew method call @"+time+"ms \n");
+				socket.writeUTFBytes(readTimedMethod(tm,startTime,"  "));
 				socket.flush();
 			}
 			
@@ -310,11 +310,12 @@ import flash.utils.getQualifiedClassName;
 		}
 		
 		
-		private function readTimedMethod(method:TimedMethod,prefix:String = ""):String {
-			var s:String = prefix + method.label + " [" + method.duration + "ms]\n";
+		private function readTimedMethod(method:TimedMethod,startTime:Number,prefix:String = ""):String {
+			var offset:Number = Math.floor((method.start - startTime)/1000)
+			var s:String = method.duration + "ms" + prefix + method.label + "\n";
 			var i:int;
 			for (i=0;i<method.callees.length;i++) {
-				s += readTimedMethod(method.callees[i] as TimedMethod, prefix + "  ");
+				s += readTimedMethod(method.callees[i] as TimedMethod,startTime, prefix + "  ");
 			}
 			return s;
 		}
