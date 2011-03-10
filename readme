@@ -42,7 +42,7 @@ QuickStart:
    - This makes sure that when you launch the app you want to profile, the preloader can make a socket connection to the LeanAirProfiler.
 7. Debug or run the app you want to profile.
    - You should see a message in the LeanAirProfiler telling you that the app connected.
-8. If you didn't check the auto-start checkbox, click the start button in the LeanAirprofiler app.
+8. In the text box change "::SomeLeakyClassName" to the name of a class you think might be leaking objects and click the "watch button"
+9. If you didn't check the auto-start checkbox, click the start button in the LeanAirprofiler app.
    - This tells the preloader to start collecting profiling data.
-9. Click the trace button in the LeanAirProfiler app to see all the methods that have been called in your app since you started profiling.
-10. Click the read button in the LeanAirProfiler app to see info about the objects that have been created, but not deleted since you started profiling.
+9. Click the "Loitering Objects" button in the LeanAirProfiler app to see allocation traces for any objects that have been created by your leaking class (including the class itself), but have not been garbage collected.
