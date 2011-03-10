@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<flexLibProperties includeAllClasses="true" version="3">
+  <includeClasses>
+    <classEntry path="com.yellowbadger.profiler.preloader.impl.PreloaderConnection"/>
+    <classEntry path="com.yellowbadger.profiler.preloader.ISampler"/>
+    <classEntry path="com.yellowbadger.profiler.ProtocolConstants"/>
+    <classEntry path="com.yellowbadger.profiler.preloader.impl.SampleCollector"/>
+    <classEntry path="com.yellowbadger.profiler.preloader.ISampleWriter"/>
+    <classEntry path="com.yellowbadger.profiler.preloader.impl.SampleWriter"/>
+    <classEntry path="com.yellowbadger.profiler.preloader.IProfilerClientConnection"/>
+    <classEntry path="com.yellowbadger.profiler.model.LiveObject"/>
+    <classEntry path="com.yellowbadger.profiler.model.DeletedObject"/>
+    <classEntry path="com.yellowbadger.profiler.model.MethodCall"/>
+    <classEntry path="com.yellowbadger.profiler.server.IProfilerServerConnection"/>
+    <classEntry path="com.yellowbadger.profiler.util.MMCfgUtil"/>
+    <classEntry path="com.yellowbadger.profiler.server.impl.ServerConnection"/>
+    <classEntry path="com.yellowbadger.profiler.CommandLineArgs"/>
+    <classEntry path="com.yellowbadger.profiler.server.IProfilerLog"/>
+    <classEntry path="com.yellowbadger.profiler.server.IProfilerSettings"/>
+    <classEntry path="com.yellowbadger.profiler.server.impl.ProfilerSettings"/>
+    <classEntry path="com.yellowbadger.profiler.analysis.PerformanceAnalyzer"/>
+    <classEntry path="com.yellowbadger.profiler.analysis.MemoryAnalyzer"/>
+    <classEntry path="com.yellowbadger.profiler.model.RawSampleStore"/>
+    <classEntry path="com.yellowbadger.profiler.preloader.IFilter"/>
+    <classEntry path="com.yellowbadger.profiler.preloader.impl.IncludeSampleFilter"/>
+    <classEntry path="com.yellowbadger.profiler.preloader.impl.ExcludeSampleFilter"/>
+    <classEntry path="com.yellowbadger.profiler.model.ProcessedSampleStore"/>
+    <classEntry path="com.yellowbadger.profiler.preloader.impl.IncludeClassInstantiatedFilter"/>
+    <classEntry path="com.yellowbadger.profiler.preloader.impl.PreloaderPackageFilter"/>
+  </includeClasses>
+  <includeResources/>
+  <namespaceManifests/>
+</flexLibProperties>

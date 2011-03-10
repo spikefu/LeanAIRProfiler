@@ -1,5 +1,7 @@
 package {
 
+import com.yellowbadger.profiler.preloader.impl.PreloaderConnection;
+
 import flash.display.MovieClip;
 import flash.display.Sprite;
 import flash.errors.IOError;
@@ -8,17 +10,8 @@ import flash.events.IOErrorEvent;
 import flash.events.ProgressEvent;
 import flash.events.TimerEvent;
 import flash.net.Socket;
-import flash.sampler.DeleteObjectSample;
-import flash.sampler.NewObjectSample;
-import flash.sampler.Sample;
-import flash.sampler.StackFrame;
-import flash.sampler.clearSamples;
-import flash.sampler.getSampleCount;
-import flash.sampler.getSamples;
-import flash.sampler.pauseSampling;
 import flash.sampler.setSamplerCallback;
 import flash.sampler.startSampling;
-import flash.sampler.stopSampling;
 import flash.system.Security;
 import flash.utils.ByteArray;
 import flash.utils.Dictionary;
@@ -27,141 +20,35 @@ import flash.utils.getQualifiedClassName;
 
 	public class Preloader extends Sprite
 	{
-		public static const START_COMMAND:String = "START";
 		
-		public static const PAUSE_COMMAND:String = "PAUSE";
-		
-		public static const CLEAR_COMMAND:String = "CLEAR";
-		
-		public static const READ_OBJECTS_COMMAND:String = "READ_OBJECTS";
-		
-		public static const TRACE_METHODS_COMMAND:String = "TRACE_METHODS";
-		
-		public static const ANALYZE_PERFORMANCE_COMMAND:String = "ANALYZE_PERFORMANCE";
-		
-		public static const BEGIN_CHUNKED_DATA:String = "BEGIN_CHUNKED_DATA";
-		
-		public static const END_CHUNKED_DATA:String = "END_CHUNKED_DATA";
-		
+		private var connection:PreloaderConnection;
 		private var host:String = "localhost";
 		
 		private var port:uint = 9998;
 		
-		private var socket:Socket;
-		
-		private var savedSamples:Array = [];
-		
-		private var objects:Dictionary = new Dictionary(true);
-		
-		private var isSampling:Boolean = false;
-		
 		public function Preloader()
 		{
 			super();
-			// This only seems to be necessary when the profiler
-			// Isn't launched from Flash Builder
-			Security.loadPolicyFile("xmlsocket://"+host+":"+port);
-			socket = new Socket();
-			socket.addEventListener(Event.CONNECT,onConnect);
-			socket.addEventListener(ProgressEvent.SOCKET_DATA,onSocketData);
-			socket.addEventListener(IOErrorEvent.IO_ERROR,ioError);
-			socket.connect(host,port);
-			setSamplerCallback(collectSamples);
-		}
-		
-		private function onSocketData(event:ProgressEvent):void {
-			pauseSampling();
-			
-			var data:String = socket.readUTFBytes(socket.bytesAvailable);
-			if (data == START_COMMAND) {
-				start();
-			} else if (data == PAUSE_COMMAND) {
-				pause();
-			} else if (data == CLEAR_COMMAND) {
-				clear();
-			} else if (data == READ_OBJECTS_COMMAND) {
-				readObjects();
-			} else if (data == TRACE_METHODS_COMMAND) {
-				traceMethods();
-			} else if (data == ANALYZE_PERFORMANCE_COMMAND) {
-				analyzePerformance();
-			}
-			if (isSampling) {
-				start();
-			}
-		}
-		
-		private function ioError(event:IOErrorEvent):void {
-			// Just swallow the error
-			// This happens when the LeanAirProfiler launches if the Preloader.swf is in mm.cfg
-			// It also happens if LeanAirProfiler isn't running or listening and Preloader.swf is in mm.cfg
-		}
-		
-		/**
-		 * OK, let's rock this joint and collect some numbers
-		 */
-		private function start():void {
+			this.connection = new PreloaderConnection(host,port);
+			setSamplerCallback(connection.sampler.collectSamples);
 			startSampling();
-			isSampling = true;
+			addEventListener(Event.REMOVED_FROM_STAGE,removedFromStage);
+			addEventListener(Event.ADDED_TO_STAGE,addedToStage);
 		}
 		
-		/**
-		 * Whoah there! let's take a break.
-		 */
-		private function pause():void {
-			pauseSampling();
-			isSampling = false;
-		}
 		
-		/**
-		 * Reset the objects collection and clear anything the sampler API has
-		 * stored internally.
-		 */
-		private function clear():void {
-			pauseSampling();
+		private function addedToStage(event:Event):void {
 			
-			objects = new Dictionary(true);
-			savedSamples = [];
-			clearSamples();
-			if (isSampling) {
-				start();
-			}
 		}
 		
-		/**
-		 * Let's find us some lingering objects.
-		 * Add any NewObjectSample without a corresponding
-		 * DeleteObjectSample to the objects collection, then
-		 * clear the internal samples.
-		 */
-		private function collectSamples():void {
-			pauseSampling();
-			var samples:* = getSamples();
-			var name:String;
-			for each (var s:Sample in samples ) {
-				if (s is NewObjectSample) {
-					var nos:NewObjectSample = s as NewObjectSample;
-					objects[nos.id] = s;
-					
-				} else if (s is DeleteObjectSample) {
-					var dos:DeleteObjectSample = s as DeleteObjectSample;
-					if (objects[dos.id]) {
-						delete objects[dos.id];
-					}
-				} else {
-					savedSamples.push(s);
-				}
-			}
+		
+		private function removedFromStage(event:Event):void {
 			
-			clearSamples();
-			if (isSampling) {
-				start();
-			}
 		}
+
 		
 		/**
 		 * 
-		 */
 		private function traceMethods():void {
 			collectSamples();
 			pauseSampling();
@@ -312,7 +199,7 @@ import flash.utils.getQualifiedClassName;
 		
 		private function readTimedMethod(method:TimedMethod,startTime:Number,prefix:String = ""):String {
 			var offset:Number = Math.floor((method.start - startTime)/1000)
-			var s:String = method.duration + "ms" + prefix + method.label + "\n";
+			var s:String = method.duration + "ms" + prefix + method.stackFrame.name +":"+method.stackFrame.line + "startTime:"+method.start+"|endTime:" + method.end +"\n";
 			var i:int;
 			for (i=0;i<method.callees.length;i++) {
 				s += readTimedMethod(method.callees[i] as TimedMethod,startTime, prefix + "  ");
@@ -354,17 +241,10 @@ import flash.utils.getQualifiedClassName;
 			}
 		}
 		
-		private function onConnect(event:Event):void {
-			pauseSampling();
-
-			socket.writeUTFBytes("Preload profiler connected!");
-
-			if (isSampling) {
-				start();
-			}
-		}
+		 */
 	}
 }
+/*
 import flash.sampler.StackFrame;
 
 internal class TimedMethod {
@@ -407,3 +287,4 @@ internal class TimedMethod {
 	}
 	
 }
+*/

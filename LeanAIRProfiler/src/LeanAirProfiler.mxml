@@ -1,207 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
-<mx:WindowedApplication applicationComplete="appComplete()"  xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute" width="800" height="500">
+<mx:WindowedApplication applicationComplete="appComplete()" close="cleanUp()" invoke="getCommandLineArgs(event)"  xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute" width="800" height="500">
 	<mx:Script>
 		<![CDATA[
+			import com.yellowbadger.profiler.CommandLineArgs;
+			import com.yellowbadger.profiler.ProtocolConstants;
+			import com.yellowbadger.profiler.analysis.MemoryAnalyzer;
+			import com.yellowbadger.profiler.analysis.PerformanceAnalyzer;
+			import com.yellowbadger.profiler.model.ProcessedSampleStore;
+			import com.yellowbadger.profiler.server.impl.ProfilerSettings;
+			import com.yellowbadger.profiler.server.impl.ServerConnection;
+			import com.yellowbadger.profiler.util.MMCfgUtil;
+			
 			import flash.sampler.Sample;
 			
 			import mx.collections.ArrayCollection;
 			
-			public static const PRELOADER_PATH:String = "C:/dev/yellowbadger/LeanAirProfiler/Preloader/bin-debug/Preloader.swf";
-			
-			public static const START_COMMAND:String = "START";
-			
-			public static const PAUSE_COMMAND:String = "PAUSE";
-			
-			public static const CLEAR_COMMAND:String = "CLEAR";
-			
-			public static const READ_OBJECTS_COMMAND:String = "READ_OBJECTS";
-			
-			public static const TRACE_METHODS_COMMAND:String = "TRACE_METHODS";
-			
-			public static const ANALYZE_PERFORMANCE_COMMAND:String = "ANALYZE_PERFORMANCE";
-			
-			public static const BEGIN_CHUNKED_DATA:String = "BEGIN_CHUNKED_DATA";
-			
-			public static const END_CHUNKED_DATA:String = "END_CHUNKED_DATA";
-			
-			public static const POLICY_FILE_REQUEST:String = "<policy-file-request/>";
 			
 			public var serverPort:uint = 9998;
 			
-			private var serverSocket:ServerSocket = new ServerSocket();
+			[Bindable]
+			private var connection:ServerConnection;
 			
-			private var clientSocket:Socket;
+			private var store:ProcessedSampleStore;
 			
-			private var buffer:String;
+			private var perfAnalyzer:PerformanceAnalyzer = new PerformanceAnalyzer();
 			
-			private var buffering:Boolean = false;
+			private var memoryAnalyzer:MemoryAnalyzer = new MemoryAnalyzer();
+			
+			private var settings:ProfilerSettings;
+			
+			private function getCommandLineArgs(event:InvokeEvent):void {
+				CommandLineArgs.apply(event.arguments);
+			}
+			
+			private function cleanUp(event:*=null):void {
+				MMCfgUtil.clearPreloaderConfig(CommandLineArgs.preloaderPath);
+			}
 			
 			private function appComplete():void {
-				serverSocket.bind(9998);
-				serverSocket.addEventListener(ServerSocketConnectEvent.CONNECT,onConnect);
-				writePreloaderConfig();
-				includeExcludeDP = new ArrayCollection();
-				includeExcludeDP.addItem("Exclude");
-				includeExcludeDP.addItem("Include");
-					
-			}
-			
-			private function writePreloaderConfig():void {
-				var f:File = File.userDirectory;
-				var cfgFile:File = f.resolvePath("mm.cfg"); 
-				
-				var fs:FileStream = new FileStream();
-				var ba:ByteArray = new ByteArray();
-				if (cfgFile.exists) {
-					fs.open(cfgFile,FileMode.READ);
-					if (fs.bytesAvailable > 0) {
-						fs.readBytes(ba,0,fs.bytesAvailable);
-						var contents:String = ba.toString();
-						if (contents.indexOf("PreloadSWF="+PRELOADER_PATH) >= 0) {
-							fs.close();
-							return;
-						}
-					}
-					fs.close();
-				}
-				fs.open(cfgFile,FileMode.APPEND);
-				var s:String = "PreloadSWF="+PRELOADER_PATH;
-				ba = new ByteArray();
-				ba.writeUTFBytes(s);
-				fs.writeBytes(ba);
-				fs.close();
-			}
-			
-			/**
-			 * Not currently used
-			 * TODO: Implement this so we can erase the preloader from mm.cfg.
-			 */
-			private function erasePreloaderConfig():void {
-				var f:File = File.userDirectory;
-				var cfgFile:File = f.resolvePath("mm.cfg"); 
-				if (!cfgFile.exists) {
-					return;
-				}
-				var fs:FileStream = new FileStream();
-				var contents:String;
-				if (cfgFile.exists) {
-					fs.open(cfgFile,FileMode.READ);
-					if (fs.bytesAvailable > 0) {
-						contents = fs.readUTF();
-						if (contents.indexOf("PreloadSWF="+PRELOADER_PATH) == 0) {
-							fs.close();
-							return;
-						}
-					}
-					fs.close();
-				}
-				fs.open(cfgFile,FileMode.WRITE);
-				var pattern:RegExp = /PreloadSWF[^.]+.swf/gi
-				contents.replace(pattern);
-				var ba:ByteArray = new ByteArray();
-				ba.writeUTFBytes(contents);
-				fs.writeBytes(ba);
-				fs.close();
-			}
-			
-			
-			private function sendCrossDomainPolicy():void {
-				clientSocket.writeUTF('<cross-domain-policy><allow-access-from domain="*" to-ports="*" /></cross-domain-policy>');
-				clientSocket.flush();
-			}
-			
-			private function onConnect(event:ServerSocketConnectEvent):void {
-				clientSocket = event.socket;
-				clientSocket.addEventListener( ProgressEvent.SOCKET_DATA, onClientSocketData );
-				log( "Connection from " + clientSocket.remoteAddress + ":" + clientSocket.remotePort );
-				connected = true;
-				if (autoStart.selected) {
-					startProfiling();
-				}
-			}
-			
-			private function onClientSocketData( event:ProgressEvent ):void
-			{
-				var s:String = clientSocket.readUTFBytes(clientSocket.bytesAvailable);
-				if (s.indexOf(POLICY_FILE_REQUEST) == 0) {
-					sendCrossDomainPolicy();
-					return;
-				}
-				if (s.indexOf(BEGIN_CHUNKED_DATA) == 0) {
-					buffer = s.substr(BEGIN_CHUNKED_DATA.length);
-					buffering = true;
-				} else if (s.indexOf(END_CHUNKED_DATA) >= 0) {
-					buffer += s.substr(0,s.length-END_CHUNKED_DATA.length);
-					rawString = buffer;
-					log(buffer);
-					buffer = "";
-					buffering = false;
-				} else {
-					if (buffering) {
-						buffer += s;
-					}
-					if (!buffering){
-						log(s);
-					}
-				}
-				
-			}
-			
-			private function listen(event:TimerEvent = null):void {
-				serverSocket.listen();
-				listening = true;
-			}
-			
-			private function stopListening():void {
-				serverSocket.close();
-				listening = false;
-			}
-			
-			private function startProfiling():void {
-				if (clientSocket  && clientSocket.connected) {
-					clientSocket.writeUTFBytes(START_COMMAND);
-					clientSocket.flush();
-					profiling = true;
-				}
-			}
-			
-			private function pauseProfiling():void {
-				if (clientSocket  && clientSocket.connected) {
-					clientSocket.writeUTFBytes(PAUSE_COMMAND);
-					clientSocket.flush();
-				}
-				profiling = false;
-			}
-			
-			private function clearProfilingData():void {
-				if (clientSocket  && clientSocket.connected) {
-					clientSocket.writeUTFBytes(CLEAR_COMMAND);
-					clientSocket.flush();
-					profiling = false;
-					logField.text = "";
-					log("Profiling data cleared.");
-				}
-			}
-			
-			private function findObjects():void {
-				if (clientSocket  && clientSocket.connected) {
-					clientSocket.writeUTFBytes(READ_OBJECTS_COMMAND);
-					clientSocket.flush();
-				}
-			}
-			
-			private function traceMethods():void {
-				if (clientSocket  && clientSocket.connected) {
-					clientSocket.writeUTFBytes(TRACE_METHODS_COMMAND);
-					clientSocket.flush();
-				}
-			}
-			
-			private function analyzePerformance():void {
-				if (clientSocket  && clientSocket.connected) {
-					clientSocket.writeUTFBytes(ANALYZE_PERFORMANCE_COMMAND);
-					clientSocket.flush();
-				}
+				settings = new ProfilerSettings();
+				settings.autoStart = autoStart.selected;
+				connection = new ServerConnection(serverPort,this.log,settings,store);
+				store = new ProcessedSampleStore();
+				this.nativeApplication.addEventListener(Event.EXITING,cleanUp);
 			}
 			
 			private function log( text:String ):void
@@ -209,107 +50,31 @@
 				logField.text = text + "\n" + logField.text;
 			}
 			
-			[Bindable]
-			private var listening:Boolean = false;
-			
-			[Bindable]
-			private var profiling:Boolean = false;
-			
-			[Bindable]
-			private var connected:Boolean = false;
-			
-			[Bindable]
-			private var includeExcludeDP:ArrayCollection;
-			
-			[Bindable]
-			private var filtersDP:ArrayCollection = new ArrayCollection();
 			
 			[Bindable]
 			private var rawString:String;
 			
-			private function doFilter():void {
-				var lines:Array = rawString.split("\n");
-				var i:int;
-				var j:int;
-				var numbers:String= "0123456789";
-				var minMethodTime:Number = new Number(minTime.text);
-				if (filtersDP.length == 0) {
-					filtersDP.addItem("");
-				}
-				for (i=0;i<filtersDP.length;i++) {
-					var filterText:String = filtersDP[i];
-					var tmp:Array = [];
-					for (j=0;j<lines.length;j++) {
-						var keep:Boolean = false;;
-						var line:String = lines[j];
-						if (filterText.length > 0) {
-							if (includeExclude.selectedItem == "Include") {
-								if (line.indexOf(filterText) >= 0) {
-									keep = true;
-								}
-							} else if (line.indexOf(filterText) < 0) {
-								keep = true;
-							}
-						} else {
-							keep = true;
-						}
-						if (minTime.text.length > 0) {
-							var idx:int = 0;
-							var numStr:String = "";
-							if (line.length > 0) {
-								while (numbers.indexOf(line.charAt(idx)) >= 0) {
-									numStr += line.charAt(idx);
-									idx++;
-								}
-								var n1:Number = new Number(numStr);
-								if (numStr.length > 0 && n1 < minMethodTime) {
-									keep = false;
-								}
-							} else {
-								keep = true;
-							}
-						}
-						if (keep) {
-							tmp.push(line);
-						}
-					}
-					lines = tmp;
-				}
-				logField.text = lines.join("\n");
+			
+			private function findObjects():void {
+				connection.findLoiteringObjects();
 			}
 			
-			private function updateFilters():void {
-				filtersDP.addItem(filterCombo.text);
-				filterCombo.text = "";
-				doFilter();
-			}
-			
-			private function removeFilter():void {
-				if (filtersDP.contains(filterCombo.text)) {
-					filtersDP.removeItemAt(filtersDP.getItemIndex(filterCombo.text));
-				}
-				filterCombo.text = "";
-				doFilter();
+			private function autoStartChanged():void {
+				settings.autoStart = autoStart.selected;
 			}
 			
 		]]>
 	</mx:Script>
 	<mx:HBox id="toolBar">
-		<mx:Button label="Listen" toolTip="Open socket to listen for profiled apps." click="listen()" enabled="{!listening}" />
-		<mx:Button label="Close" toolTip="Close the socket for the current app." click="stopListening()" enabled="{listening}" />
-		<mx:Button label="Start" toolTip="Start collecting profiling data from the current app." click="startProfiling()" enabled="{!profiling &amp;&amp; connected}" />
-		<mx:Button label="Pause" toolTip="Pause collecting profiling data from the current app." click="pauseProfiling()" enabled="{profiling &amp;&amp; connected}" />
-		<mx:Button label="Clear" toolTip="Clear profiling data for the current app." click="clearProfilingData()" enabled="{connected}" />
-		<mx:Button label="Read" toolTip="Read the current count of in memory objects from the profiler." click="findObjects()" enabled="{connected}" />
-		<mx:Button label="Trace" toolTip="Trace method calls since profiling started." click="traceMethods()" enabled="{connected}" />
-		<mx:Button label="Analyze" toolTip="Analyze method performance." click="analyzePerformance()" enabled="{connected}" />
-		<mx:CheckBox label="Autostart" id="autoStart" toolTip="Start profiling as soon as a client connects" />
+		<mx:Button label="Listen" toolTip="Open socket to listen for profiled apps." click="connection.listen()" enabled="{!connection.listening}" />
+		<mx:Button label="Reset" toolTip="Reset the socket and clear mm.cfg." click="connection.close()" enabled="{connection.listening}" />
+		<mx:Button label="Start" toolTip="Start collecting profiling data from the current app." click="connection.startProfiling()" enabled="{!connection.profiling &amp;&amp; connection.connected}" />
+		<mx:Button label="Pause" toolTip="Pause collecting profiling data from the current app." click="connection.pauseProfiling()" enabled="{connection.profiling &amp;&amp; connection.connected}" />
+		<mx:Button label="Clear" toolTip="Clear profiling data for the current app." click="connection.clearProfilingData()" enabled="{connection.connected}" />
+		<mx:Button label="Loitering objects" toolTip="See if any of your filtered objects are still loitering around." click="findObjects()" enabled="{connection.connected}" />
+		<mx:CheckBox label="Autostart" id="autoStart" toolTip="Start profiling as soon as a client connects" change="autoStartChanged()" />
+		<mx:TextInput id="watchClass" text="::SomeLeakyClassName" /> 
+		<mx:Button label="watch" click="connection.watchClass(watchClass.text)" enabled="{watchClass.text.length != 0}" />
 	</mx:HBox>
-	<mx:HBox id="options" top="{toolBar.height+3}">
-		<mx:ComboBox id="includeExclude" dataProvider="{includeExcludeDP}" />
-		<mx:Label text="rows containing"/><mx:ComboBox editable="true" dataProvider="{filtersDP}" id="filterCombo" enter="updateFilters()" /><mx:Button label="x" width="25" click="removeFilter()" />
-		<mx:Label text="Min method time"/><mx:TextInput id="minTime" restrict="0-9"/>
-		<mx:Button label="apply" click="doFilter()" enabled="{rawString.length &gt; 0}" />
-	</mx:HBox>
-	<mx:TextArea left="0" right="0" top="{options.height+options.y}" bottom="0" id="logField" wordWrap="false" />
+	<mx:TextArea left="0" right="0" top="{toolBar.height}" bottom="0" id="logField" wordWrap="false" />
 </mx:WindowedApplication>
