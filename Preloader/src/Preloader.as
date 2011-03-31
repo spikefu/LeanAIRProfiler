@@ -31,21 +31,7 @@ import flash.utils.getQualifiedClassName;
 			super();
 			this.connection = new PreloaderConnection(host,port);
 			setSamplerCallback(connection.sampler.collectSamples);
-			startSampling();
-			addEventListener(Event.REMOVED_FROM_STAGE,removedFromStage);
-			addEventListener(Event.ADDED_TO_STAGE,addedToStage);
 		}
-		
-		
-		private function addedToStage(event:Event):void {
-			
-		}
-		
-		
-		private function removedFromStage(event:Event):void {
-			
-		}
-
 		
 		/**
 		 * 

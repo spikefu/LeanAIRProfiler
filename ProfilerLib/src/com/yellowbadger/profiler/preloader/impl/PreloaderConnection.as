@@ -66,8 +66,10 @@ package com.yellowbadger.profiler.preloader.impl
 			var data:String = socket.readUTFBytes(socket.bytesAvailable);
 			if (data == ProtocolConstants.START_COMMAND) {
 				sampler.start();
+				write("Profiling started");
 			} else if (data == ProtocolConstants.PAUSE_COMMAND) {
 				sampler.pause();
+				write("Profiling paused");
 			} else if (data == ProtocolConstants.CLEAR_COMMAND) {
 				sampler.clear();
 			} else if (data == ProtocolConstants.FIND_LOITERING_OBJECTS) {
@@ -79,6 +81,13 @@ package com.yellowbadger.profiler.preloader.impl
 			}
 			if (sampler.isSampling()) {
 				sampler.start();
+			}
+		}
+		
+		private function write(msg:String):void {
+			if (socket.connected) {
+				socket.writeUTFBytes(msg);
+				socket.flush();
 			}
 		}
 		
@@ -97,9 +106,21 @@ package com.yellowbadger.profiler.preloader.impl
 		private function watch(cmd:String):void {
 			var parts:Array = cmd.split("-");
 			if (parts[1] != null) {
+				var firstLineOnly:Boolean = true;
+				if (parts[2] && parts[2] == "false") {
+					firstLineOnly = false;
+				}
 				store.removeAllFilters();
-				store.addFilter(new IncludeClassInstantiatedFilter(parts[1]));
+				store.addFilter(new IncludeClassInstantiatedFilter(parts[1],firstLineOnly));
+				socket.writeUTFBytes("Now watching '" + parts[1] + "'");
+				socket.writeUTFBytes("\nFirst line only: " + firstLineOnly);
+				socket.flush();
+			} else {
+				
+				socket.writeUTFBytes("Couldn't find anything to watch.");
+				socket.flush();
 			}
+			
 		}
 		
 		private function ioError(event:IOErrorEvent):void {

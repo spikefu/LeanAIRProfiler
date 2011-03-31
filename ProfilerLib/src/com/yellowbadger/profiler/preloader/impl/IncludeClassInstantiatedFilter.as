@@ -9,9 +9,12 @@ package com.yellowbadger.profiler.preloader.impl
 
 	public class IncludeClassInstantiatedFilter extends IncludeSampleFilter
 	{
-		public function IncludeClassInstantiatedFilter(filter:String)
+		private var firstLineOnly:Boolean = false;
+		
+		public function IncludeClassInstantiatedFilter(filter:String,firstLineOnly:Boolean)
 		{
 			super(filter);
+			firstLineOnly = firstLineOnly;
 		}
 		
 		override public function pass(sample:Sample):Boolean {
@@ -25,10 +28,14 @@ package com.yellowbadger.profiler.preloader.impl
 				var details:Array = [];
 				var goodMatch:Boolean = false;
 				if (nos.stack && nos.stack.length > 0) {
-					var frame:StackFrame = nos.stack[0] as StackFrame;
-					var s:String = frame.toString();
-					if (frame.toString().indexOf(filter) >= 0) {
-						goodMatch = true;
+					for each (var frame:StackFrame in nos.stack) {
+						var s:String = frame.toString();
+						if (frame.name.indexOf(filter) >= 0) {
+							goodMatch = true;
+						}
+						if (firstLineOnly) {
+							break;
+						}
 					}
 					if (!goodMatch) {
 						return false;

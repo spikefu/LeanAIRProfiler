@@ -14,6 +14,7 @@ package com.yellowbadger.profiler.server.impl
 	import flash.events.ProgressEvent;
 	import flash.events.ServerSocketConnectEvent;
 	import flash.net.ServerSocket;
+	import flash.net.SharedObject;
 	import flash.net.Socket;
 	import flash.utils.ByteArray;
 
@@ -44,6 +45,15 @@ package com.yellowbadger.profiler.server.impl
 		
 		private var store:ProcessedSampleStore;
 		
+		private var lso:SharedObject;
+		
+		[Bindable]
+		public var classToWatch:String = "::SomeLeakyClassName";
+		
+		[Bindable]
+		public var flo:Boolean = true;
+		
+		
 		public function ServerConnection(port:Number,log:Function,settings:IProfilerSettings,store:ProcessedSampleStore)
 		{
 			this.port = port;
@@ -51,6 +61,17 @@ package com.yellowbadger.profiler.server.impl
 			this.settings = settings;
 			this.store = store;
 			reset();
+			lso = SharedObject.getLocal("localData");
+			if(lso.data.classToWatch) {
+				classToWatch = lso.data.classToWatch;
+			}
+			if (lso.data.hasOwnProperty("flo")) {
+				if (lso.data.flo) {
+					flo = true;
+				} else {
+					flo = false;
+				}
+			}
 		}
 		
 		public function reset():void {
@@ -89,6 +110,9 @@ package com.yellowbadger.profiler.server.impl
 			log( "Connection from " + clientSocket.remoteAddress + ":" + clientSocket.remotePort );
 			dispatchEvent(new Event(CONNECTION_STATE_CHANGED));
 			MMCfgUtil.clearPreloaderConfig(CommandLineArgs.preloaderPath);
+			if (classToWatch != null && classToWatch.length > 0 && classToWatch != "::SomeLeakyClassName") {
+				watchClass(classToWatch,flo);
+			}
 			if (settings.autoStart) {
 				startProfiling();
 			}
@@ -128,9 +152,18 @@ package com.yellowbadger.profiler.server.impl
 			}
 		}
 		
-		public function watchClass(name:String):void {
+		public function watchClass(name:String,firstLineOnly:Boolean):void {
+			classToWatch = name;
+			flo = firstLineOnly;
+			lso.data.classToWatch = name;
+			lso.data.flo = firstLineOnly;
+			lso.flush();
 			if (connected) {
-				clientSocket.writeUTFBytes(ProtocolConstants.WATCH + "-" + name + "-");
+				var flo:String = "false";
+				if (firstLineOnly) {
+					flo = "true";
+				}
+				clientSocket.writeUTFBytes(ProtocolConstants.WATCH + "-" + name + "-" + flo + "-");
 				clientSocket.flush();
 			}
 		}

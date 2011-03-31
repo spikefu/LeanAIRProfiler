@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<mx:WindowedApplication applicationComplete="appComplete()" close="cleanUp()" invoke="getCommandLineArgs(event)"  xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute" width="800" height="500">
+<mx:WindowedApplication applicationComplete="appComplete()" close="cleanUp()" invoke="getCommandLineArgs(event)"  xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute" width="950" height="500">
 	<mx:Script>
 		<![CDATA[
 			import com.yellowbadger.profiler.CommandLineArgs;
@@ -28,6 +28,7 @@
 			private var memoryAnalyzer:MemoryAnalyzer = new MemoryAnalyzer();
 			
 			private var settings:ProfilerSettings;
+			
 			
 			private function getCommandLineArgs(event:InvokeEvent):void {
 				CommandLineArgs.apply(event.arguments);
@@ -73,8 +74,9 @@
 		<mx:Button label="Clear" toolTip="Clear profiling data for the current app." click="connection.clearProfilingData()" enabled="{connection.connected}" />
 		<mx:Button label="Loitering objects" toolTip="See if any of your filtered objects are still loitering around." click="findObjects()" enabled="{connection.connected}" />
 		<mx:CheckBox label="Autostart" id="autoStart" toolTip="Start profiling as soon as a client connects" change="autoStartChanged()" />
-		<mx:TextInput id="watchClass" text="::SomeLeakyClassName" /> 
-		<mx:Button label="watch" click="connection.watchClass(watchClass.text)" enabled="{watchClass.text.length != 0}" />
+		<mx:TextInput id="watchClass" text="{connection.classToWatch}" />
+		<mx:CheckBox label="First line" id="firstLineOnly" selected="{connection.flo}" toolTip="Only look in the first frame of the stack" />
+		<mx:Button label="watch" click="connection.watchClass(watchClass.text,firstLineOnly.selected)" enabled="{watchClass.text.length != 0}" />
 	</mx:HBox>
 	<mx:TextArea left="0" right="0" top="{toolBar.height}" bottom="0" id="logField" wordWrap="false" />
 </mx:WindowedApplication>

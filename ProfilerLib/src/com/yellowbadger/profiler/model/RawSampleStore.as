@@ -70,7 +70,13 @@ package com.yellowbadger.profiler.model
 			var s:String = "";
 			for each (var nos:NewObjectSample in liveObjects) {
 				if (nos.object){
-					s += nos.object + "\n";
+					try {
+						s += nos.object + "\n";
+					} catch (e:Error) {
+						s += e.message + "\n";
+					}
+				} else {
+					s += "Function";
 				}
 				s += "Object Stack:" + i + "\n";
 				i++;
